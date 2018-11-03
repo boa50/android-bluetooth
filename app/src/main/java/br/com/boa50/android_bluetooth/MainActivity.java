@@ -1,14 +1,22 @@
 package br.com.boa50.android_bluetooth;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
+
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -18,6 +26,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_ENABLE_BT = 2;
 
     private Button btSend;
+    private Button btConnect;
 
     private String mConnectedDeviceName = null;
     private StringBuffer mOutStringBuffer;
@@ -31,11 +40,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         btSend = findViewById(R.id.bt_send);
+        btConnect = findViewById(R.id.bt_connect);
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         if (mBluetoothAdapter == null) {
             Toast.makeText(getApplicationContext(), "Bluetooth indisponível", Toast.LENGTH_LONG).show();
+            this.finish();
         }
     }
 
@@ -78,7 +89,14 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        mBluetoothService = new BluetoothService(getApplicationContext(), /*TODO mHandler*/);
+        btConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //TODO
+            }
+        });
+
+        mBluetoothService = new BluetoothService(getApplicationContext(), mHandler);
         mOutStringBuffer = new StringBuffer();
     }
 
@@ -108,5 +126,94 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    //TODO parei aqui
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case Constants.MESSAGE_STATE_CHANGE:
+                    switch (msg.arg1) {
+                        case BluetoothService.STATE_CONNECTED:
+                            Toast.makeText(getApplicationContext(), "State Connected",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        case BluetoothService.STATE_CONNECTING:
+                            Toast.makeText(getApplicationContext(), "State Connecting",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        case BluetoothService.STATE_LISTEN:
+                            Toast.makeText(getApplicationContext(), "State Listen",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                        case BluetoothService.STATE_NONE:
+                            Toast.makeText(getApplicationContext(), "Not connected",
+                                    Toast.LENGTH_LONG).show();
+                            break;
+                    }
+                    break;
+                case Constants.MESSAGE_WRITE:
+                    byte[] writeBuf = (byte[]) msg.obj;
+                    String writeMsg = new String(writeBuf);
+                    Toast.makeText(getApplicationContext(), "Write: " + writeMsg,
+                            Toast.LENGTH_LONG).show();
+                    break;
+                case Constants.MESSAGE_READ:
+                    byte[] readBuf = (byte[]) msg.obj;
+                    String readMsg = new String(readBuf, 0, msg.arg1);
+                    Toast.makeText(getApplicationContext(), "Write: " + readMsg,
+                            Toast.LENGTH_LONG).show();
+                    break;
+                case Constants.MESSAGE_DEVICE_NAME:
+                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
+                    Toast.makeText(getApplicationContext(), "Connected to: " + mConnectedDeviceName,
+                            Toast.LENGTH_LONG).show();
+                    break;
+                case Constants.MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(Constants.TOAST),
+                            Toast.LENGTH_LONG).show();
+                    break;
+            }
+        }
+    };
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        switch (requestCode) {
+            case REQUEST_CONNECT_DEVICE_SECURE:
+                // When DeviceListActivity returns with a device to connect
+                if (resultCode == Activity.RESULT_OK) {
+                    connectDevice(data);
+                }
+                break;
+            case REQUEST_ENABLE_BT:
+                // When the request to enable Bluetooth returns
+                if (resultCode == Activity.RESULT_OK) {
+                    // Bluetooth is now enabled, so set up a chat session
+                    setupService();
+                } else {
+                    // User did not enable Bluetooth or an error occurred
+                    Log.d(TAG, "BT not enabled");
+                    Toast.makeText(getApplicationContext(), "Bluetooth não ativado",
+                            Toast.LENGTH_SHORT).show();
+                    this.finish();
+                }
+        }
+    }
+
+    private void connectDevice(Intent data) {
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+
+        if (pairedDevices.size() > 0) {
+            // There are paired devices. Get the name and address of each paired device.
+            for (BluetoothDevice device : pairedDevices) {
+                String deviceName = device.getName();
+                String deviceHardwareAddress = device.getAddress(); // MAC address
+
+                mBluetoothService.connect(device);
+                break;
+            }
+        }
+        Toast.makeText(getApplicationContext(), "Não há dispositivos pareados",
+                Toast.LENGTH_LONG).show();
+    }
+
 }
