@@ -92,7 +92,8 @@ public class MainActivity extends AppCompatActivity {
         btConnect.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //TODO
+                Intent serverIntent = new Intent(getApplicationContext(), DeviceListActivity.class);
+                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
             }
         });
 
@@ -200,20 +201,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void connectDevice(Intent data) {
-        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+        // Get the device MAC address
+        String address = data.getExtras()
+                .getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        // Get the BluetoothDevice object
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        // Attempt to connect to the device
+        mBluetoothService.connect(device);
 
-        if (pairedDevices.size() > 0) {
-            // There are paired devices. Get the name and address of each paired device.
-            for (BluetoothDevice device : pairedDevices) {
-                String deviceName = device.getName();
-                String deviceHardwareAddress = device.getAddress(); // MAC address
-
-                mBluetoothService.connect(device);
-                break;
-            }
-        }
-        Toast.makeText(getApplicationContext(), "Não há dispositivos pareados",
-                Toast.LENGTH_LONG).show();
+//        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter.getBondedDevices();
+//
+//        if (pairedDevices.size() > 0) {
+//            // There are paired devices. Get the name and address of each paired device.
+//            Toast.makeText(getApplicationContext(), "Há dispositivos pareados",
+//                    Toast.LENGTH_LONG).show();
+//            for (BluetoothDevice device : pairedDevices) {
+//                String deviceName = device.getName();
+//                Toast.makeText(getApplicationContext(), "Device name: " + deviceName,
+//                        Toast.LENGTH_LONG).show();
+//                String deviceHardwareAddress = device.getAddress(); // MAC address
+//
+//                mBluetoothService.connect(device);
+//                break;
+//            }
+//        } else {
+//            Toast.makeText(getApplicationContext(), "Não há dispositivos pareados",
+//                    Toast.LENGTH_LONG).show();
+//        }
     }
 
 }
